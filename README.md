@@ -1,4 +1,4 @@
 # school purposes only
 
 admin: shy
-pass: shuri121
+pass: shuri1221
