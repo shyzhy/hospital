@@ -11,193 +11,147 @@ import DoctorList from "./component/DoctorList";
 import AppointmentList from "./component/AppointmentList";
 
 function App() {
-  // 1. State for our data
   const [patients, setPatients] = useState<Patient[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
 
-  // State for new item forms (Create)
   const [newPatient, setNewPatient] = useState({ first_name: "", last_name: "", gender: "", date_of_birth: "", contact_number: "", address: "", email: "" });
-  const [newDoctor, setNewDoctor] = useState({ first_name: "",last_name: "", specialization: "", email: "" });
+  const [newDoctor, setNewDoctor] = useState({ first_name: "", last_name: "", specialization: "", email: "" });
   const [newAppointment, setNewAppointment] = useState({ patient: 0, doctor: 0, appointment_date: "", status: "Scheduled" });
 
-  // 2. Fetch all data on load
+  const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
+  const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+  const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+
   const loadData = async () => {
     try {
-      const pData = await getPatients();
+      const [pData, dData, aData] = await Promise.all([getPatients(), getDoctors(), getAppointments()]);
       setPatients(pData);
-      
-      const dData = await getDoctors();
       setDoctors(dData);
-
-      const aData = await getAppointments();
       setAppointments(aData);
     } catch (error) {
       console.error("Failed to load data", error);
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
-  // 3. DOCTOR HANDLERS
-  const handleAddDoctor = async (e: React.FormEvent) => {
+  const handleDoctorSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await createDoctor(newDoctor);
-    setNewDoctor({ first_name: "", last_name: "", specialization: "", email: ""});
-    loadData();
-  };
-  const handleUpdateDoctor = async (doctor: Doctor) => {
-  try {
-    // Pass the specific doctor_id property
-    await updateDoctor(doctor.doctor_id, doctor);
-    loadData();
-    alert("Doctor updated successfully!");
-  } catch (error: any) {
-    alert("Update Error: " + JSON.stringify(error.response?.data));
-    }
-  };
-
-  const handleDeleteDoctor = async (id: number) => {
-  try {
-    await deleteDoctor(id);
-    loadData();
-  } catch (error) {
-    console.error("Delete failed", error);
-  }
-  };
-  // 4. PATIENT HANDLERS
-  const handleAddPatient = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await createPatients(newPatient);
-    setNewPatient({ first_name: "", last_name: "", gender: "", date_of_birth: "", contact_number: "", email: "", address: "" });
-    loadData();
-  };
-  const handleUpdatePatient = async (patient: Patient) => {
-    await updatePatient(patient.patient_id, patient);
-    loadData();
-  };
-  const handleDeletePatient = async (id: number) => {
-    await deletePatients(id);
-    loadData();
-  };
-
-// 5. APPOINTMENT HANDLERS
-  const handleAddAppointment = async (e: React.FormEvent) => {
-      e.preventDefault();
-      try {
-        await createAppointment({
-          patient: newAppointment.patient, 
-          doctor: newAppointment.doctor,
-          appointment_date: new Date(newAppointment.appointment_date).toISOString(),
-          status: newAppointment.status
-        });
-        setNewAppointment({ patient: 0, doctor: 0, appointment_date: "", status: "Scheduled" });
-        loadData();
-      } catch (error: any) {
-        console.error("Add failed", error.response?.data);
+    try {
+      if (editingDoctor) {
+        await updateDoctor(editingDoctor.doctor_id, editingDoctor);
+        setEditingDoctor(null);
+      } else {
+        await createDoctor(newDoctor);
+        setNewDoctor({ first_name: "", last_name: "", specialization: "", email: "" });
       }
-    };
-    const handleUpdateAppointment = async (appointment: Appointment) => {
-    try {
-      // Pass the appointment_id and the updated data object
-      await updateAppointment(appointment.appointment_id, {
-        patient: appointment.patient,
-        doctor: appointment.doctor,
-        appointment_date: appointment.appointment_date,
-        status: appointment.status
-      });
-      loadData();
-    } catch (error) {
-      console.error("Update failed", error);
-    }
+      await loadData();
+    } catch (err) { alert("Error saving doctor."); }
   };
 
-  const handleDeleteAppointment = async (id: number) => {
+  const handlePatientSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
-      await deleteAppointment(id);
-      loadData(); // Refresh the list after deleting
-    } catch (error) {
-      console.error("Delete failed", error);
-    }
+      if (editingPatient) {
+        await updatePatient(editingPatient.patient_id, editingPatient);
+        setEditingPatient(null);
+      } else {
+        await createPatients(newPatient);
+        setNewPatient({ first_name: "", last_name: "", gender: "", date_of_birth: "", contact_number: "", email: "", address: "" });
+      }
+      await loadData();
+    } catch (err) { alert("Error saving patient."); }
   };
+
+  const handleAppointmentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const data = editingAppointment || newAppointment;
+      if (editingAppointment) {
+        await updateAppointment(editingAppointment.appointment_id, data);
+        setEditingAppointment(null);
+      } else {
+        await createAppointment(data);
+        setNewAppointment({ patient: 0, doctor: 0, appointment_date: "", status: "Scheduled" });
+      }
+      await loadData();
+    } catch (err) { alert("Error saving appointment."); }
+  };
+
   return (
-    <div style={{ padding: "20px", fontFamily: "Arial", maxWidth: "900px", margin: "0 auto" }}>
-      <h1 style={{ textAlign: "center" }}>🏥 Doctor-Patient System Dashboard</h1>
+    <div className="min-h-screen bg-slate-50 p-6 md:p-12 font-sans text-slate-900">
+      <div className="max-w-7xl mx-auto space-y-12">
+        
+        <header className="border-b border-slate-200 pb-8 text-center md:text-left">
+          <h1 className="text-5xl font-black tracking-tighter text-blue-900 uppercase italic">Hospital Dashboard</h1>
+          <p className="text-slate-500 font-bold mt-2 tracking-widest uppercase text-xs">Medical Management System</p>
+        </header>
 
-      {/* --- DOCTORS SECTION --- */}
-      <div style={{ border: "1px solid #ccc", padding: "15px", marginBottom: "20px", borderRadius: "8px" }}>
-        <h2>Doctors</h2>
-        <form onSubmit={handleAddDoctor} style={{ marginBottom: "15px" }}>
-          <input type="text" placeholder="First Name" value={newDoctor.first_name} onChange={(e) => setNewDoctor({...newDoctor, first_name: e.target.value})} required style={{ marginRight: "5px" }} />
-          <input type="text" placeholder="Last Name" value={newDoctor.last_name} onChange={(e) => setNewDoctor({...newDoctor, last_name: e.target.value})} required style={{ marginRight: "5px" }} />
-          <input type="text" placeholder="Specialization" value={newDoctor.specialization} onChange={(e) => setNewDoctor({...newDoctor, specialization: e.target.value})} required style={{ marginRight: "5px" }} />
-          <input type="email" placeholder="Email" value={newDoctor.email} onChange={(e) => setNewDoctor({...newDoctor, email: e.target.value})} required style={{ marginRight: "5px" }} />
-          <button type="submit">Add Doctor</button>
-        </form>
-        <DoctorList doctors={doctors} onUpdate={handleUpdateDoctor} onDelete={handleDeleteDoctor} />
-      </div>
+        {/* --- DOCTOR SECTION --- */}
+        <section className="bg-white rounded-[2.5rem] shadow-2xl p-10 border border-slate-100">
+          <h2 className="text-2xl font-black mb-8 text-blue-600">👨‍⚕️ {editingDoctor ? 'UPDATE DOCTOR' : 'ADD DOCTOR'}</h2>
+          <form onSubmit={handleDoctorSubmit} className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-10 bg-blue-50/50 p-6 rounded-3xl">
+            <input type="text" placeholder="First Name" className="p-4 rounded-2xl border-none outline-blue-400" value={editingDoctor ? editingDoctor.first_name : newDoctor.first_name} onChange={(e) => editingDoctor ? setEditingDoctor({...editingDoctor, first_name: e.target.value}) : setNewDoctor({...newDoctor, first_name: e.target.value})} required />
+            <input type="text" placeholder="Last Name" className="p-4 rounded-2xl border-none outline-blue-400" value={editingDoctor ? editingDoctor.last_name : newDoctor.last_name} onChange={(e) => editingDoctor ? setEditingDoctor({...editingDoctor, last_name: e.target.value}) : setNewDoctor({...newDoctor, last_name: e.target.value})} required />
+            <input type="text" placeholder="Specialization" className="p-4 rounded-2xl border-none outline-blue-400" value={editingDoctor ? editingDoctor.specialization : newDoctor.specialization} onChange={(e) => editingDoctor ? setEditingDoctor({...editingDoctor, specialization: e.target.value}) : setNewDoctor({...newDoctor, specialization: e.target.value})} required />
+            <input type="email" placeholder="Email" className="p-4 rounded-2xl border-none outline-blue-400" value={editingDoctor ? editingDoctor.email : newDoctor.email} onChange={(e) => editingDoctor ? setEditingDoctor({...editingDoctor, email: e.target.value}) : setNewDoctor({...newDoctor, email: e.target.value})} required />
+            <button type="submit" className={`font-black text-white p-4 rounded-2xl ${editingDoctor ? 'bg-orange-500' : 'bg-blue-600'}`}>{editingDoctor ? 'SAVE' : 'ADD'}</button>
+          </form>
+          <DoctorList doctors={doctors} onUpdate={(doc) => setEditingDoctor(doc)} onDelete={async (id) => { await deleteDoctor(id); loadData(); }} />
+        </section>
 
-      {/* --- PATIENTS SECTION --- */}
-      <div style={{ border: "1px solid #ccc", padding: "15px", marginBottom: "20px", borderRadius: "8px" }}>
-        <h2>Patients</h2>
-        <form onSubmit={handleAddPatient} style={{ marginBottom: "15px" }}>
-          <input type="text" placeholder="First Name" value={newPatient.first_name} onChange={(e) => setNewPatient({...newPatient, first_name: e.target.value})} required style={{ marginRight: "5px" }} />
-          <input type="text" placeholder="Last Name" value={newPatient.last_name} onChange={(e) => setNewPatient({...newPatient, last_name: e.target.value})} required style={{ marginRight: "5px" }} />
-          <input type="date" value={newPatient.date_of_birth} onChange={(e) => setNewPatient({...newPatient, date_of_birth: e.target.value})} required style={{ marginRight: "5px" }} />
-          <input type="text" placeholder="Contact Number" value={newPatient.contact_number} onChange={(e) => setNewPatient({...newPatient, contact_number: e.target.value})} required style={{ marginRight: "5px" }} />
-          <input type="text" placeholder="Address" value={newPatient.address} onChange={(e) => setNewPatient({...newPatient, address: e.target.value})} required style={{ marginRight: "5px" }} />
-          <input type="text" placeholder="Gender" value={newPatient.gender} onChange={(e) => setNewPatient({...newPatient, gender: e.target.value})} required style={{ marginRight: "5px" }} />
-          <input type="email" placeholder="Email" value={newPatient.email} onChange={(e) => setNewPatient({...newPatient, email: e.target.value})} required style={{ marginRight: "5px" }} />
-          <button type="submit">Add Patient</button>
-        </form>
-        <PatientList patients={patients} onUpdate={handleUpdatePatient} onDelete={handleDeletePatient} />
-      </div>
-
-      {/* --- APPOINTMENTS SECTION --- */}
-      <div style={{ border: "1px solid #ccc", padding: "15px", marginBottom: "20px", borderRadius: "8px" }}>
-        <h2>Appointments</h2>
-        <form onSubmit={handleAddAppointment} style={{ marginBottom: "15px" }}>
+        {/* --- PATIENT SECTION --- */}
+        <section className="bg-white rounded-[2.5rem] shadow-2xl p-10 border border-slate-100">
+          <h2 className="text-2xl font-black mb-8 text-emerald-600">🤒 {editingPatient ? 'EDIT PATIENT' : 'REGISTER PATIENT'}</h2>
           
-          <select 
-            value={newAppointment.patient || 0} 
-            onChange={(e) => setNewAppointment({...newAppointment, patient: Number(e.target.value)})} 
-            required 
-            style={{ marginRight: "5px", padding: "3px" }}
-          >
-            <option value={0} disabled>Select Patient</option>
-            {patients.map(p => (
-              <option key={p.patient_id} value={p.patient_id}>{p.first_name} {p.last_name}</option>
-            ))}
-          </select>
+          <form onSubmit={handlePatientSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10 bg-emerald-50/50 p-6 rounded-3xl">
+            <input type="text" placeholder="First Name" className="p-4 rounded-2xl border-none outline-emerald-400 font-medium" value={editingPatient ? editingPatient.first_name : newPatient.first_name} onChange={(e) => editingPatient ? setEditingPatient({...editingPatient, first_name: e.target.value}) : setNewPatient({...newPatient, first_name: e.target.value})} required />
+            <input type="text" placeholder="Last Name" className="p-4 rounded-2xl border-none outline-emerald-400 font-medium" value={editingPatient ? editingPatient.last_name : newPatient.last_name} onChange={(e) => editingPatient ? setEditingPatient({...editingPatient, last_name: e.target.value}) : setNewPatient({...newPatient, last_name: e.target.value})} required />
+            <input type="date" className="p-4 rounded-2xl border-none outline-emerald-400 font-medium text-slate-500" value={editingPatient ? editingPatient.date_of_birth : newPatient.date_of_birth} onChange={(e) => editingPatient ? setEditingPatient({...editingPatient, date_of_birth: e.target.value}) : setNewPatient({...newPatient, date_of_birth: e.target.value})} required />
+            <select className="p-4 rounded-2xl border-none outline-emerald-400 font-medium text-slate-500 bg-white" value={editingPatient ? editingPatient.gender : newPatient.gender} onChange={(e) => editingPatient ? setEditingPatient({...editingPatient, gender: e.target.value}) : setNewPatient({...newPatient, gender: e.target.value})} required>
+              <option value="" disabled>Gender...</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+            <input type="text" placeholder="Contact Number" className="p-4 rounded-2xl border-none outline-emerald-400 font-medium" value={editingPatient ? editingPatient.contact_number : newPatient.contact_number} onChange={(e) => editingPatient ? setEditingPatient({...editingPatient, contact_number: e.target.value}) : setNewPatient({...newPatient, contact_number: e.target.value})} required />
+            <input type="email" placeholder="Email Address" className="p-4 rounded-2xl border-none outline-emerald-400 font-medium" value={editingPatient ? editingPatient.email : newPatient.email} onChange={(e) => editingPatient ? setEditingPatient({...editingPatient, email: e.target.value}) : setNewPatient({...newPatient, email: e.target.value})} required />
+            <input type="text" placeholder="Home Address" className="p-4 rounded-2xl border-none outline-emerald-400 font-medium" value={editingPatient ? editingPatient.address : newPatient.address} onChange={(e) => editingPatient ? setEditingPatient({...editingPatient, address: e.target.value}) : setNewPatient({...newPatient, address: e.target.value})} required />
+            <button type="submit" className={`font-black text-white p-4 rounded-2xl ${editingPatient ? 'bg-orange-500' : 'bg-emerald-600 hover:bg-emerald-700'}`}>
+              {editingPatient ? 'UPDATE' : 'REGISTER'}
+            </button>
+          </form>
 
-          <select 
-            value={newAppointment.doctor || 0} 
-            onChange={(e) => setNewAppointment({...newAppointment, doctor: Number(e.target.value)})} 
-            required 
-            style={{ marginRight: "5px", padding: "3px" }}
-          >
-            <option value={0} disabled>Select Doctor</option>
-            {doctors.map(d => (
-              <option key={d.doctor_id} value={d.doctor_id}>Dr. {d.first_name} {d.last_name}</option>
-            ))}
-          </select>
+          <PatientList patients={patients} onUpdate={(p) => setEditingPatient(p)} onDelete={async (id) => { await deletePatients(id); loadData(); }} />
+        </section>
 
-          <input type="datetime-local" value={newAppointment.appointment_date} onChange={(e) => setNewAppointment({...newAppointment, appointment_date: e.target.value})} required style={{ marginRight: "5px" }} />
-          <input type="text" placeholder="Status" value={newAppointment.status} onChange={(e) => setNewAppointment({...newAppointment, status: e.target.value})} required style={{ width: "100px", marginRight: "5px" }} />
-          <button type="submit">Add Appointment</button>
-        </form>
+        {/* --- APPOINTMENT SECTION --- */}
+        <section className="bg-white rounded-[2.5rem] shadow-2xl p-10 border border-slate-100">
+          <h2 className="text-2xl font-black mb-8 text-slate-800 uppercase font-mono">📅 Appointment Manager</h2>
+          <form onSubmit={handleAppointmentSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10 bg-slate-100 p-6 rounded-3xl">
+            <select className="p-4 rounded-2xl border-none outline-slate-400" value={editingAppointment ? editingAppointment.patient : newAppointment.patient} onChange={(e) => editingAppointment ? setEditingAppointment({...editingAppointment, patient: Number(e.target.value)}) : setNewAppointment({...newAppointment, patient: Number(e.target.value)})} required>
+              <option value={0}>Choose Patient...</option>
+              {patients.map(p => <option key={p.patient_id} value={p.patient_id}>{p.first_name} {p.last_name}</option>)}
+            </select>
+            <select className="p-4 rounded-2xl border-none outline-slate-400" value={editingAppointment ? editingAppointment.doctor : newAppointment.doctor} onChange={(e) => editingAppointment ? setEditingAppointment({...editingAppointment, doctor: Number(e.target.value)}) : setNewAppointment({...newAppointment, doctor: Number(e.target.value)})} required>
+              <option value={0}>Choose Doctor...</option>
+              {doctors.map(d => <option key={d.doctor_id} value={d.doctor_id}>Dr. {d.first_name} {d.last_name}</option>)}
+            </select>
+            
+            {/* THIS IS THE FIXED INPUT: .slice(0, 16) cuts off the seconds and the 'Z' */}
+            <input type="datetime-local" className="p-4 rounded-2xl border-none outline-slate-400 font-medium" 
+              value={editingAppointment ? editingAppointment.appointment_date.slice(0, 16) : newAppointment.appointment_date} 
+              onChange={(e) => editingAppointment ? setEditingAppointment({...editingAppointment, appointment_date: e.target.value}) : setNewAppointment({...newAppointment, appointment_date: e.target.value})} required />
+            
+            <button type="submit" className="bg-slate-900 text-white font-black p-4 rounded-2xl shadow-lg shadow-slate-200 hover:bg-black transition-all">
+              {editingAppointment ? 'UPDATE' : 'BOOK'}
+            </button>
+          </form>
+          <AppointmentList appointments={appointments} patients={patients} doctors={doctors} onUpdate={(a) => setEditingAppointment(a)} onDelete={async (id) => { await deleteAppointment(id); loadData(); }} />
+        </section>
 
-        <AppointmentList 
-          appointments={appointments} 
-          patients={patients} 
-          doctors={doctors} 
-          onUpdate={handleUpdateAppointment} 
-          onDelete={handleDeleteAppointment} 
-        />
       </div>
-
     </div>
   );
 }

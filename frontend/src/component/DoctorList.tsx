@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Doctor } from "../types";
+import React from 'react';
+import { Doctor } from '../types';
 
 interface Props {
   doctors: Doctor[];
@@ -8,57 +8,30 @@ interface Props {
 }
 
 const DoctorList: React.FC<Props> = ({ doctors, onUpdate, onDelete }) => {
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editFirstName, setEditFirstName] = useState("");
-  const [editLastName, setEditLastName] = useState("");
-  const [editSpecialization, setEditSpecialization] = useState("");
-  const [editEmail, setEditEmail] = useState("");
-
-  const handleEdit = (doctor: Doctor) => {
-    setEditingId(doctor.doctor_id); // Use doctor_id
-    setEditFirstName(doctor.first_name);
-    setEditLastName(doctor.last_name);
-    setEditSpecialization(doctor.specialization);
-    setEditEmail(doctor.email);
-  };
-
-  const handleSave = (doctor: Doctor) => {
-    onUpdate({
-      ...doctor,
-      first_name: editFirstName,
-      last_name: editLastName,
-      specialization: editSpecialization,
-      email: editEmail,
-    });
-    setEditingId(null);
-  };
-
   return (
-    <ul>
-      {doctors.map((doctor) => (
-        <li key={doctor.doctor_id} style={{ marginBottom: "10px" }}>
-          {editingId === doctor.doctor_id ? (
-            <>
-              <input value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} />
-              <input value={editLastName} onChange={(e) => setEditLastName(e.target.value)} />
-              <input value={editSpecialization} onChange={(e) => setEditSpecialization(e.target.value)} />
-              <input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
-              <button onClick={() => handleSave(doctor)}>Save</button>
-              <button onClick={() => setEditingId(null)}>Cancel</button>
-            </>
-          ) : (
-            <>
-              <span>
-                <strong>[ID: {doctor.doctor_id}] Dr. {doctor.first_name} {doctor.last_name}</strong> - {doctor.specialization} ({doctor.email})
-              </span>
-              <button onClick={() => handleEdit(doctor)}>Edit</button>
-              <button onClick={() => onDelete(doctor.doctor_id)}>Delete</button>
-            </>
-          )}
-        </li>
-      ))}
-    </ul>
+    <div className="overflow-hidden rounded-xl border border-slate-200">
+      <table className="w-full text-left bg-white">
+        <thead className="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
+          <tr>
+            <th className="px-6 py-4">Name</th>
+            <th className="px-6 py-4">Specialization</th>
+            <th className="px-6 py-4 text-right">Manage</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {doctors.map((doctor) => (
+            <tr key={doctor.doctor_id} className="hover:bg-slate-50/50 transition-colors">
+              <td className="px-6 py-4 font-bold text-slate-800 uppercase tracking-tight">Dr. {doctor.first_name} {doctor.last_name}</td>
+              <td className="px-6 py-4 text-slate-500">{doctor.specialization}</td>
+              <td className="px-6 py-4 text-right space-x-4 font-black">
+                <button onClick={() => onUpdate(doctor)} className="text-blue-600 hover:underline">EDIT</button>
+                <button onClick={() => onDelete(doctor.doctor_id)} className="text-red-500 hover:underline">REMOVE</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 };
-
 export default DoctorList;
